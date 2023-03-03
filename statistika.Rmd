@@ -1,0 +1,269 @@
+---
+title: "Statistika"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: 
+      collapsed: false
+      smooth_scroll: true
+    number_sections: true
+runtime: shiny
+---
+
+```{r setup, include = TRUE, message = FALSE}
+
+library(dplyr)
+library(ggplot2)
+library(knitr)
+
+opts_chunk$set(fig.align = "center", message = FALSE, include = TRUE)
+```
+
+# Úvodní informace
+## Typy statistických přístupů
+
+Existují 2 základní rozdělení:
+
+-   **deskriptivní**
+    -   Ta má za cíl popsat jen konkrétní dataset. Nedá se z ní usuzovat na obecnější závěry.
+-   **inferenční**
+    -   Z té se dá usuzovat na obecné závěry, ale jsou kladeny nějaké podmínky na použití hypotéz.
+    
+## Typy proměnných
+Rozlišujeme většinou:
+
+1. Numerické
+    a. spojité (délka letu letadla)
+    b. diskrétní (počet kroků během procházky)
+
+2. Kategoriální
+    a. nominální (nedají se porovnávat, řadit)
+    b. ordinální (dají se porovnávat, řadit)
+
+## Datové charakteristiky
+
+Na datech se dají zkoumat charakteristiky (vlastnosti rozdělení četností):
+
+1. **Poloha (úroveň)**
+- modus (nejčetnější hodnota), medián (hodnota uprostřed datového souboru), průměr
+2. **Variabilita**
+- jak moc jsou rozdílné hodnoty v datovém souboru (rozptyl, směrodatná odchylka, mezikvartilové rozpětí, ...)
+3. **Šikmost**
+- kladné (více nižší než vyšších hodnot, dlouhý pravý konec) vs. záporné zešikmení (opačně)
+4. **Špičatost**
+- jak moc jsou hodnoty nekumulovány kolem modusu (např. normální rozdělení má hodnotu 3, vše nad 3 je špičaté a vše pod 3 je ploché)
+
+Pro získání představy o tvaru rozdělení statistického souboru se používají **kvantily**. Předpokladem je uspořádání souboru vzestupně. Nejpoužívanějšími jsou medián (50 % kvantil, nebo kvartil, když to rozdělíme na čtvrtiny), dolní kvantil (25 %) a horní kv. (75 %). Pro grafické zobrazení se používá **krabičkový graf (boxplot)**. Nebo taky **histogram**.
+
+```{r, out.width = "50%"}
+
+# summary: zobrazí hlavní charakteristiky polohy a variability
+summary(mtcars$mpg)
+
+# quantile: můžeme si navolit, jaké percentily (kvantily) zobrazí u dané proměnné
+quantile(mtcars$mpg, probs = c(0, 0.1, 0.8, 0.95, 1))
+
+# box plot: ty čáry na konci jsou min a max (bez odlehlých hodnot) a ten box reprezentuje rozpětí mezi 25 a 75 % kvantil
+# IQR (mezikvartilové rozpětí) * 1,5 +- jsou hranice odchylky, za které se považují už odlehlé hodnoty (outliers)
+boxplot(mtcars$mpg, horizontal = TRUE)
+
+hist(mtcars$mpg)
+```
+
+U kategorických proměnných se hodí graf zobrazovat sloupcově/pruhově.
+
+```{r, out.width = "50%"}
+ggplot(mtcars, aes(x = as.factor(cyl))) +
+  geom_bar() +
+  theme_classic()
+```
+
+# Pravděpodobnost
+
+Teorie pravděpodobnosti poskytuje nezbytný technický aparát pro měření nejistoty a k ohodnocení spolehlivých závěrů, které činíme na základě omezené informace (výběru dat). Pravděpodobnost náhodného jevu A je číslo P(A), které lze interpretovat jako míru možnosti nastoupení náhodného jevu. 
+
+**Náhodná veličina** – její hodnota je jednoznačně určena výsledkem náhodného pokusu. Dělíme ji na spojitou a diskrétní.
+
+Prostředky popisu rozdělení NV:
+
+- **Nespojitá** náhodná veličina
+  - Distribuční funkce
+  - Pravděpodobnostní funkce
+- **Spojitá** náhodná veličina
+  - Distribuční funkce
+  - Hustota pravděpodobnosti
+  
+Rozdělení **nespojitých** náhodných veličin:
+
+- **Alternativní** rozdělení - rozdělení náhodné veličiny, která v jednom náhodném pokusu může nabýt pouze 2 hodnot (0/1)
+
+```{r, collapse = TRUE}
+# příklad: hazím mincí (může být jen panna nebo orel)
+# shoduje se vlastně v tomhle případě s binomickým rozdělením
+
+rbinom(n = 1, size = 1, prob = 0.5) # jeden hod s jednou mincí, kde pravděpodobnost je 50 % pro obě strany mince
+rbinom(1, 8, 0.5) # jeden hod s osmi mincemi, kde PP je 50 % pro obě strany (výsledné číslo je součet 1 (pan))
+
+dbinom(7, 20, prob = 0.5) # 7 hlav z 20 hodů při 50 % pravděpodobnosti panny/orla (přesně)
+pbinom(7, 20, prob = 0.5) # PP, že padne 7 a méně pan z 20 hodů při 50 % PP obou stran
+pbinom(7, 20, prob = 0.5, lower.tail = TRUE) # PP, že padne 7 a více pan z 20 hodů při 50 % PP obou stran
+
+```
+
+- **Binomické** rozdělení - udává PP x-úspěchů v n-nezávislých pokusech, PP úspěchu je ve všech pokusech stejná
+- **Poissonovo** rozdělení - udává PP výskytu náhodného jevu v určitém časovém intervalu, nebo je-li PP výskytu jevu v jednom pokusu velmi malá (=< 0,1) a zároveň n > 30 (většinou ve statistice >30 znamená hodně)
+  - aproximuje (nahrazuje) binomické rozdělení
+  
+```{r}
+# příklad: počet úmrtí v roce
+
+dpois(55000, lambda = 100000) # počet úmrtí 55 tis. když v průměru umře za danou časovou jednotku (rok) 100 tis. lidí
+ppois(55000, lambda = 100000) # počet úmrtí do 55 tis. (včetně) když ... (dává malé pp, moc velké rozpětí hodnot)
+ppois(5, 8, lower.tail = TRUE) # počet úmrtí 5 a více, když průměr je 8
+rpois(10, lambda = 8) # náhodný výběr 10 hodnot z Poissonova rozdělení, kde průměr ZS je 8
+
+hist(rpois(10000, 8)) # CLV pořád platí - konvergence k normálním rozdělení
+```
+
+- **Hypergeometrické** rozdělení - Máme-li konečný soubor N-jednotek, z nichž M má určitou vlastnost, ze souboru vybíráme bez vracení n-jednotek
+
+
+Rozdělení **spojitých** náhodných veličin:
+
+- **Rovnoměrné** rozdělení - všechny hodnoty náhodné veličiny mají stejnou PP výběru
+
+```{r, collapse = TRUE}
+# příklad: čekání na autobus, kdy nevíme čas příjezdu (tedy může přijet kdykoliv), ale víme, že přijede max za 12 minut
+
+punif(7, min = 0, max = 12) # pravděpodobnost, že přijede do sedmi minut (včetně)
+punif(7, min = 0, max = 12, lower.tail = FALSE) # # pravděpodobnost, že přijede od sedmi minut (včetně) do 12 minut
+punif(7, min = 0, max = 12) - punif(4, min = 0, max = 12) # PP, že přijede mezi 4 až 7 min (včetně obou)
+
+```
+
+
+- **Normální** rozdělení
+  - nejdůležitější rozdělení spojité náhodné veličiny
+  - používá se tam, kde je zdrojem měnivosti hodnot náhodné veličiny součet velkého počtu drobných
+nezávislých vlivů
+  - např. u náhodných chyb, aproximují (nahrazují) se jím některá nespojitá rozdělení
+  - 68% hodnot spadá do oblasti pod křivkou rozdělení +- 1 směrodatnou odchylku, 95 % do +-2 odchylek a 99.7 % do +-3 odchylek
+  
+```{r, collapse = TRUE}
+# příklad: mám soubor výšek lidí, z toho mám průměr a směrodatnou odchylku, zajímají mě:
+
+pnorm(154, mean = 161, sd = 7) # podíl osob mající výšku 154 cm a nižší, když je průměr 161 a s.o. 7 (opět oblast pod křivkou nalevo od hodnoty)
+pnorm(154, mean = 161, sd = 7, lower.tail = FALSE) # ten zbytek
+qnorm(0.9, mean = 161, sd = 7) # výška, které maximálně dosahuje 90 % lidí
+rnorm(n = 10, 161, 7) # 10 náhodných výšek z normálního rozdělení na základě daného průměru a s.o.
+
+```
+
+*Pozor: u vysokých čísel může vykreslení grafu trvat delší dobu.*
+```{r, echo = FALSE}
+numericInput("pocet_hodu_CLV", "Počet hodů kostkou", value = 10, min = 1)
+
+sample_means <- reactive(replicate(input$pocet_hodu_CLV,  mean(sample(1:6, 5, replace = TRUE))))
+
+renderPlot({
+  hist(sample_means(), breaks = seq(0.5, 6.5, 0.5), xlim = range(0:7), main = "Histogram četností (s rostoucím počtem hodů konverguje k normálnímu rozdělení", ylab = "Počet hodnot dané strany kostky", xlab = "Hodnota kostky")
+})
+
+```
+
+
+  
+- **Normované normální** rozdělení - normovaná náhodná veličiny U má normované normální rozdělení s nulovou střední hodnotou a jednotkovým rozptylem
+- **Logaritmicko-normální** rozdělení - nezáporná náhodná veličina X, jejíž logaritmy jsou normálně rozděleny, se řídí logaritmicko-normálním rozdělením („lognormálním“) rozdělením, používá se např. při zkoumání mzdových a příjmových rozdělení
+
+## Limitní věty
+
+Jde o tvrzení o pravděpodobnostních rozděleních v případě rostoucího počtu náhodných pokusů.
+
+### Zákon velkých čísel
+
+Opakujeme-li nezávisle náhodný pokus, můžeme z napozorovaných hodnot sestavit rozdělení relativních četností a informací o tomto rozdělení shrnout do charakteristik (=empirická rozdělení četností). Zvětšuje-li se počet pokusů, lze za jistých podmínek očekávat, že empirické rozdělení četností (i jeho charakteristiky) se bude blížit rozdělení teoretickému.
+
+### Centrální limitní věty
+
+Normální rozdělení je rozdělením limitním, k němuž se jiná rozdělení za určitých okolností blíží. Náhodná veličina X, která vznikla jako součet velkého počtu vzájemně nezávislých náhodných veličin X1, X2, X3, Xn má za obecných podmínek přibližně normální rozdělení. Náhodná veličina X, jejímž limitním zákonem rozdělení je rozdělení normální má asymptoticky normální rozdělení.
+
+### Moivreova-Laplaceova CLV
+
+Při dostatečně velkém počtu nezávislých pokusů konverguje (blíží se) binomické rozdělení k rozdělení normálnímu.
+
+### Lindebergova-Lévyova CLV
+
+
+Součet n vzájemně nezávislých náhodných veličin, které jsou stejně rozdělené (mají libovolné stejné rozdělení) s končenou střední hodnotou E(X) a konečným rozptylem D(X), konverguje pro velká n k přibližně normálnímu rozdělení se střední hodnotou E(X)=nμ a rozptylem D(X)=nσ2. (Empirické pravidlo: n≥30)
+
+## Statistická indukce
+
+### Výběrová zjišťování
+
+V praxi obvykle zkoumáme vlastnosti základního souboru (ZS), tj. souboru obsahujícího všechny jednotky, prostřednictvím výběrového souboru, tj. souboru dat získaného z výběrového statistického šetření. Na základě těchto dat potom provádíme zevšeobecňující úsudek, který se týká celého základního souboru. Matematicko-statistické metody vycházejí z předpokladu, že výběrová data byla pořízena **náhodným výběrem**, tj. výběrem, kdy o zařazení určité jednotky základního souboru do výběru rozhodla pouze náhoda. při náhodném výběru má každá jednotka ZS stejnou PP, že může být zahrnuta do výběru.
+
+Způsoby náhodného výběru:
+
+- **prostý** náhodný výběr - vybíráme statistické jednotky tak, že každá jednotka, která je v ZS má stejnou PP, že bude vybrána
+- **oblastní** náhodný výběr - ZS se předem rozdělí na několik homogenních skupin a v každé skupině se provede náhodný výběr určitého počtu jednotek
+- **dvoustupňový** výběr - v 1.stupni výběru se vybírají skupiny jednotek a ve 2.stupni výběru se ve vybraných skupinách náhodně vybírají statistické jednotky
+
+Cílem výběrového šetření je odhadnout na základě statistiky odpovídající charakteristiky základního souboru (budťo **bodový** nebo **intervalový** odhad).
+
+Vybírat ze základního souboru můžeme 2 způsoby:
+
+- **bez vracení** - pravděpodobnost výběru jednotky se postupně mění
+- **s vracením** - PP výběru zůstává po celou dobu stejná
+
+```{r sample}
+set.seed(5) # je jedno, jaké číslo dám do seedu, seed jen obecně zajistí, že pokaždý dostanu náhodou stejný výsledek (replikovatelnost výsledků)
+mtcars %>% 
+  sample_n(1) # náhodný výběr 1 jednotky souboru (výchozí nastavení - replace = FALSE, tedy výběr bez vracení)
+```
+
+Nejčastěji se vysvětluje na hodu kostkou. Ta má standardně 6 stran a každá z nich má stejnou pravděpodobnost hození 1/6. Pro pochopení grafu využiju příklad z [datacampu](www.datacamp.com).
+
+![Pravděpodobnost hodu kostkou, kdy padne hodnota 2 a menší.](./obrazky do reportu/prob_area_2 a mene.png){width=70%}
+
+```{r, echo = FALSE, out.width = "50%"}
+numericInput("pocet_hodu", "Počet hodů kostkou", value = 10)
+
+die <- data.frame(n = c(1:6))
+die_rolls <- reactive(
+  die %>% sample_n(input$pocet_hodu, replace = TRUE)
+) # 10x hodit kostkou, jednotky v souboru logicky zůstávají
+
+renderPlot({
+  hist(die_rolls()$n, breaks = seq(0.5, 6.5, by = 1), freq = TRUE,
+       main = "Histogram četností - empirické rozdělení hodů kostkou", xlab = "Hodnota kostky", ylab = "Počet hodů")
+})
+
+```
+
+Pak při větším počtu hodů to rozdělení hodnot konverguje k rovnoměrnému rozdělení (kde mají všechny hodnoty stejnou pravděpodobnost výběru).
+
+## Testování hypotéz
+
+
+Statistická hypotéza je určitý předpoklad o parametrech nebo tvaru určitého rozdělení. Přepokládáme- li, že střední hodnota μ se rovná určité hodnotě μ0, potom je toto tvrzení hypotézou o parametru μ. Postup, kterým na základě výběrových dat ověřujeme platnosti dané statistické hypotézy je test statistické hypotézy.
+
+Tento předpoklad se označuje jako *nulová* (testovaná) hypotéza. Proti ní se vystaví hypotéza *alternativní*. (střední hodnota je větší (pravostranný test), menší (levostranný), nebo není rovna dané hranici (oboustranný test)).
+
+Pro testování se pak zvolí vhodná statistika, tzv. **testové kritérium**, které se může pohybovat v množině hodnot zvané výběrový prostor. Ten se dělí na 2 části: 
+
+1. **Kritický obor** - obsahuje hodnoty svědčící v neprospěch nulové hypotézy
+2. **Obor přijetí** - opak
+
+Hodnoty oddělující obor přijetí a kritický obor jsou kritické hodnoty. Kritickými hodnotami jsou kvantily rozdělení testového kritéria. Test provádíme na předem zvolené **hladině (nejčastěji 5 %) významnosti.**
+
+Vypočte se hodnota TK na základě hodnot z náhodného výběru. Následně zhodnotíme, jestli zamítáme na dané hladině významnosti testovanou hypotézu nebo ne. S hodnocením hypotéz se ale pojí právě určitá nejistota. Ty nejčastěji dělíme na 2 druhy (chyby):
+
+1. testovaná hypotéza je nepravdivá a my ji přesto nezamítneme (chyba II. druhu)
+2. testovaná hypotéza je pravdivá a my ji zamítneme (chyba I. druhu)
+
+Zbylé možnosti jsou **spolehlivost** (pravděpodobnost nezamítnutí nulové hypotézy při její platnosti) a **síla testu** (pravděpodobnost zamítnutí v případě nepravdivosti).
+
+
+
